@@ -1,10 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: health-api
-  namespace: healthcare-dev
+  name: healthcare-api
   labels:
-    app: health-api
+    app: healthcare-api
 spec:
   replicas: 2
   revisionHistoryLimit: 5
@@ -15,24 +14,23 @@ spec:
       maxSurge: 1
   selector:
     matchLabels:
-      app: health-api
+      app: healthcare-api
   template:
     metadata:
       labels:
-        app: health-api
+        app: healthcare-api
     spec:
+      serviceAccountName: healthcare-api-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        fsGroup: 10001
       containers:
-        - name: health-api
-          image: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/health-api:latest
+        - name: healthcare-api
+          image: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/healthcare-api:${IMAGE_TAG}
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
-          env:
-            - name: PREDICT_SCORE
-              valueFrom:
-                secretKeyRef:
-                  name: health-api-secrets
-                  key: predict_score
           readinessProbe:
             httpGet:
               path: /health
@@ -50,14 +48,21 @@ spec:
               cpu: "100m"
               memory: "128Mi"
             limits:
-              cpu: "300m"
+              cpu: "500m"
               memory: "256Mi"
+          env:
+            - name: ENV
+              value: "prod"
+            # Example secret from K8s Secret synced from AWS Secrets Manager
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: healthcare-api-secrets
+                  key: api_key
 ---
 apiVersion: v1
-kind: Secret
+kind: ServiceAccount
 metadata:
-  name: health-api-secrets
-  namespace: healthcare-dev
-type: Opaque
-stringData:
-  predict_score: "0.75"
+  name: healthcare-api-sa
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::<AWS_ACCOUNT_ID>:role/healthcare-api-sa-role
