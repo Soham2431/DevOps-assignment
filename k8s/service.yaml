@@ -1,13 +1,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: health-api-svc
-  namespace: healthcare-dev
+  name: healthcare-api-svc
+  labels:
+    app: healthcare-api
 spec:
   type: ClusterIP
   selector:
-    app: health-api
+    app: healthcare-api
   ports:
     - port: 80
       targetPort: 8000
       protocol: TCP
+      name: http
